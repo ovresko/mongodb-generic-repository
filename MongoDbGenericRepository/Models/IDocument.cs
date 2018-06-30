@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using System;
 
 namespace MongoDbGenericRepository.Models
@@ -18,13 +19,17 @@ namespace MongoDbGenericRepository.Models
         /// A version number, to indicate the version of the schema.
         /// </summary>
         int Version { get; set; }
+
+        DateTime AddedAtUtc { get; set; }
+
+        string Name { get; set; }
     }
 
     /// <summary>
     /// This class represents a basic document that can be stored in MongoDb.
     /// Your document must implement this class in order for the MongoDbRepository to handle them.
     /// </summary>
-    public interface IDocument : IDocument<Guid>
+    public interface IDocument : IDocument<ObjectId>
     {
     }
 }

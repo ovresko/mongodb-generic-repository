@@ -1,4 +1,6 @@
-﻿using MongoDB.Driver;
+﻿using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Serializers;
+using MongoDB.Driver;
 using MongoDbGenericRepository.Models;
 using System;
 
@@ -23,6 +25,16 @@ namespace MongoDbGenericRepository
         {
             // Avoid legacy UUID representation: use Binary 0x04 subtype.
             MongoDefaults.GuidRepresentation = MongoDB.Bson.GuidRepresentation.Standard;
+            try
+            {
+                //BsonSerializer.RegisterSerializer(typeof(DateTime?), DateTimeSerializer.LocalInstance);
+                BsonSerializer.RegisterSerializer(typeof(DateTime), DateTimeSerializer.LocalInstance);
+
+            }
+            catch (Exception s)
+            {
+                 
+            }
         }
 
         /// <summary>

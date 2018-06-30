@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using System.Linq.Expressions;
 using MongoDbGenericRepository.Models;
 using System.Linq;
+using MongoDB.Bson;
+using System.Text;
 
 namespace MongoDbGenericRepository
 {
@@ -99,7 +101,7 @@ namespace MongoDbGenericRepository
         /// <typeparam name="TDocument">The type representing a Document.</typeparam>
         /// <typeparam name="TKey">The type of the primary key for a Document.</typeparam>
         /// <param name="documents">The documents you want to add.</param>
-        void AddMany<TDocument, TKey>(IEnumerable<TDocument> documents)
+        void AddManyTkey<TDocument, TKey>(IEnumerable<TDocument> documents)
             where TDocument : IDocument<TKey>
             where TKey : IEquatable<TKey>;
 
@@ -786,7 +788,7 @@ namespace MongoDbGenericRepository
         /// <param name="skipNumber">The number of documents you want to skip. Default value is 0.</param>
         /// <param name="takeNumber">The number of documents you want to take. Default value is 50.</param>
         /// <param name="partitionKey">An optional partition key.</param>
-        Task<List<TDocument>> GetPaginatedAsync<TDocument>(Expression<Func<TDocument, bool>> filter, int skipNumber = 0, int takeNumber = 50, string partitionKey = null)
+        Task<List<TDocument>> GetPaginatedAsyncA<TDocument>(Expression<Func<TDocument, bool>> filter, int skipNumber = 0, int takeNumber = 50, string partitionKey = null)
             where TDocument : IDocument;
 
         /// <summary>
@@ -912,7 +914,7 @@ namespace MongoDbGenericRepository
         /// <summary>
         /// The MongoDbContext
         /// </summary>
-        protected IMongoDbContext MongoDbContext = null;
+        public IMongoDbContext MongoDbContext = null;
 
         #region Create
 
@@ -936,7 +938,7 @@ namespace MongoDbGenericRepository
         /// <param name="document">The document you want to add.</param>
         public void AddOne<TDocument>(TDocument document) where TDocument : IDocument
         {
-            FormatDocument(document);
+            FormatDocument(document); 
             HandlePartitioned(document).InsertOne(document);
         }
 
@@ -980,6 +982,10 @@ namespace MongoDbGenericRepository
 
         #endregion Create
 
+
+         
+
+
         #region Create TKey
 
         /// <summary>
@@ -993,6 +999,10 @@ namespace MongoDbGenericRepository
             where TDocument : IDocument<TKey>
             where TKey : IEquatable<TKey>
         {
+
+
+         
+
             FormatDocument<TDocument, TKey>(document);
             await HandlePartitioned<TDocument, TKey>(document).InsertOneAsync(document);
         }
@@ -1041,7 +1051,7 @@ namespace MongoDbGenericRepository
         /// <typeparam name="TDocument">The type representing a Document.</typeparam>
         /// <typeparam name="TKey">The type of the primary key for a Document.</typeparam>
         /// <param name="documents">The documents you want to add.</param>
-        public void AddMany<TDocument, TKey>(IEnumerable<TDocument> documents)
+        public void AddManyTkey<TDocument, TKey>(IEnumerable<TDocument> documents)
             where TDocument : IDocument<TKey>
             where TKey : IEquatable<TKey>
         {
@@ -1154,6 +1164,18 @@ namespace MongoDbGenericRepository
         }
 
         /// <summary>
+        /// Asynchronously returns a list of the documents matching the filter condition.
+        /// </summary>
+        /// <typeparam name="TDocument">The type representing a Document.</typeparam>
+        /// <param name="filter">A LINQ expression filter.</param>
+        /// <param name="partitionKey">An optional partition key.</param>
+        public async Task<List<TDocument>> GetAllAsyncFilterDefinition<TDocument>(FilterDefinition<TDocument> filter, string partitionKey = null) where TDocument : IDocument
+        {
+            return await HandlePartitioned<TDocument>(partitionKey).Find(filter).ToListAsync();
+        }
+
+
+        /// <summary>
         /// Returns a list of the documents matching the filter condition.
         /// </summary>
         /// <typeparam name="TDocument">The type representing a Document.</typeparam>
@@ -1161,7 +1183,14 @@ namespace MongoDbGenericRepository
         /// <param name="partitionKey">An optional partition key.</param>
         public List<TDocument> GetAll<TDocument>(Expression<Func<TDocument, bool>> filter, string partitionKey = null) where TDocument : IDocument
         {
-            return HandlePartitioned<TDocument>(partitionKey).Find(filter).ToList();
+            try
+            {
+                return HandlePartitioned<TDocument>(partitionKey).Find(filter).ToList();
+            }
+            catch 
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -2054,10 +2083,10 @@ namespace MongoDbGenericRepository
         /// <param name="skipNumber">The number of documents you want to skip. Default value is 0.</param>
         /// <param name="takeNumber">The number of documents you want to take. Default value is 50.</param>
         /// <param name="partitionKey">An optional partition key.</param>
-        public async Task<List<TDocument>> GetPaginatedAsync<TDocument>(Expression<Func<TDocument, bool>> filter, int skipNumber = 0, int takeNumber = 50, string partitionKey = null)
+        public async Task<List<TDocument>> GetPaginatedAsyncA<TDocument>(Expression<Func<TDocument, bool>> filter, int skipNumber = 0, int takeNumber = 50, string partitionKey = null)
             where TDocument : IDocument
-        {
-            return await HandlePartitioned<TDocument>(partitionKey).Find(filter).Skip(skipNumber).Limit(takeNumber).ToListAsync();
+        { 
+            return await HandlePartitioned<TDocument>(partitionKey).Find(filter).SortByDescending(a => a.AddedAtUtc).Skip(skipNumber).Limit(takeNumber).ToListAsync();
         }
 
         /// <summary>
@@ -2141,7 +2170,7 @@ namespace MongoDbGenericRepository
             return GetCollection<TDocument, TKey>();
         }
 
-        private IMongoCollection<TDocument> HandlePartitioned<TDocument>(string partitionKey) where TDocument : IDocument
+        public IMongoCollection<TDocument> HandlePartitioned<TDocument>(string partitionKey) where TDocument : IDocument
         {
             if (!string.IsNullOrEmpty(partitionKey))
             {
@@ -2156,9 +2185,9 @@ namespace MongoDbGenericRepository
             {
                 throw new ArgumentNullException(nameof(document));
             }
-            if (document.Id == default(Guid))
+            if (document.Id == ObjectId.Empty)
             {
-                document.Id = Guid.NewGuid();
+                document.Id = ObjectId.GenerateNewId();
             }
         }
 
